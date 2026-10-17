@@ -1,0 +1,20 @@
+{
+  "leaderboard": [
+    {
+      "username": "Principal_Neo",
+      "stars": 24,
+      "avgLatency": 14,
+      "rank": "Principal Architect",
+      "updatedAt": "2026-10-17T10:52:39.343Z"
+    },
+    {
+      "username": "Cloud_Samurai",
+      "stars": 21,
+      "avgLatency": 22,
+      "rank": "Principal Architect",
+      "updatedAt": "2026-10-17T10:52:39.344Z"
+    }
+  ],
+  "savedBlueprints": [],
+  "customMissions": []
+}
