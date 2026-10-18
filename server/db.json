@@ -13,8 +13,585 @@
       "avgLatency": 22,
       "rank": "Principal Architect",
       "updatedAt": "2026-10-17T10:52:39.344Z"
+    },
+    {
+      "username": "Anil_Architect",
+      "stars": 19,
+      "avgLatency": 34,
+      "rank": "Senior Cloud Engineer",
+      "updatedAt": "2026-10-17T13:00:04.269Z"
     }
   ],
-  "savedBlueprints": [],
+  "savedBlueprints": [
+    {
+      "id": "bp-1792240791692",
+      "username": "Anil_Architect",
+      "missionId": 1,
+      "grade": "S",
+      "stars": 3,
+      "avgLatency": 24,
+      "totalCost": 552,
+      "nodes": [
+        {
+          "id": "srv-1",
+          "type": "SERVER",
+          "tier": 2,
+          "count": 1,
+          "stateful": false,
+          "x": 240,
+          "y": 180
+        },
+        {
+          "id": "db-1",
+          "type": "DATABASE",
+          "tier": 1,
+          "count": 1,
+          "stateful": true,
+          "x": 520,
+          "y": 180
+        }
+      ],
+      "connections": [
+        {
+          "from": "srv-1",
+          "to": "db-1"
+        }
+      ],
+      "createdAt": "2026-10-17T12:39:51.692Z"
+    },
+    {
+      "id": "bp-1792241669925",
+      "username": "Anil_Architect",
+      "missionId": 1,
+      "grade": "A",
+      "stars": 2,
+      "avgLatency": 44,
+      "totalCost": 580,
+      "nodes": [
+        {
+          "id": "srv-1",
+          "type": "SERVER",
+          "tier": 1,
+          "count": 1,
+          "stateful": false,
+          "x": 240,
+          "y": 180
+        },
+        {
+          "id": "db-1",
+          "type": "DATABASE",
+          "tier": 1,
+          "count": 1,
+          "stateful": true,
+          "x": 520,
+          "y": 180
+        },
+        {
+          "id": "server-1524",
+          "type": "SERVER",
+          "tier": 1,
+          "count": 1,
+          "stateful": false,
+          "x": 231,
+          "y": 323
+        }
+      ],
+      "connections": [
+        {
+          "from": "srv-1",
+          "to": "db-1"
+        },
+        {
+          "from": "server-1524",
+          "to": "db-1"
+        }
+      ],
+      "createdAt": "2026-10-17T12:54:29.925Z"
+    },
+    {
+      "id": "bp-1792241686312",
+      "username": "Anil_Architect",
+      "missionId": 1,
+      "grade": "S",
+      "stars": 3,
+      "avgLatency": 17,
+      "totalCost": 944,
+      "nodes": [
+        {
+          "id": "srv-1",
+          "type": "SERVER",
+          "tier": 1,
+          "count": 1,
+          "stateful": false,
+          "x": 240,
+          "y": 180
+        },
+        {
+          "id": "db-1",
+          "type": "DATABASE",
+          "tier": 1,
+          "count": 1,
+          "stateful": true,
+          "x": 520,
+          "y": 180
+        },
+        {
+          "id": "server-1524",
+          "type": "SERVER",
+          "tier": 2,
+          "count": 2,
+          "stateful": false,
+          "x": 231,
+          "y": 323
+        }
+      ],
+      "connections": [
+        {
+          "from": "srv-1",
+          "to": "db-1"
+        },
+        {
+          "from": "server-1524",
+          "to": "db-1"
+        }
+      ],
+      "createdAt": "2026-10-17T12:54:46.312Z"
+    },
+    {
+      "id": "bp-1792241753936",
+      "username": "Anil_Architect",
+      "missionId": 2,
+      "grade": "S",
+      "stars": 3,
+      "avgLatency": 23,
+      "totalCost": 1728,
+      "nodes": [
+        {
+          "id": "srv-1",
+          "type": "SERVER",
+          "tier": 3,
+          "count": 1,
+          "stateful": false,
+          "x": 370,
+          "y": 158
+        },
+        {
+          "id": "db-1",
+          "type": "DATABASE",
+          "tier": 2,
+          "count": 1,
+          "stateful": true,
+          "x": 600,
+          "y": 180
+        },
+        {
+          "id": "database-7511",
+          "type": "DATABASE",
+          "tier": 1,
+          "count": 1,
+          "stateful": true,
+          "x": 628,
+          "y": 339
+        },
+        {
+          "id": "load_balancer-3512",
+          "type": "LOAD_BALANCER",
+          "tier": 1,
+          "count": 1,
+          "stateful": false,
+          "x": 131,
+          "y": 181
+        },
+        {
+          "id": "server-9307",
+          "type": "SERVER",
+          "tier": 1,
+          "count": 1,
+          "stateful": false,
+          "x": 372,
+          "y": 306
+        }
+      ],
+      "connections": [
+        {
+          "from": "load_balancer-3512",
+          "to": "srv-1"
+        },
+        {
+          "from": "load_balancer-3512",
+          "to": "server-9307"
+        },
+        {
+          "from": "srv-1",
+          "to": "db-1"
+        },
+        {
+          "from": "srv-1",
+          "to": "database-7511"
+        },
+        {
+          "from": "server-9307",
+          "to": "db-1"
+        },
+        {
+          "from": "server-9307",
+          "to": "database-7511"
+        }
+      ],
+      "createdAt": "2026-10-17T12:55:53.936Z"
+    },
+    {
+      "id": "bp-1792241830423",
+      "username": "Anil_Architect",
+      "missionId": 3,
+      "grade": "S",
+      "stars": 3,
+      "avgLatency": 18,
+      "totalCost": 2672,
+      "nodes": [
+        {
+          "id": "lb-1",
+          "type": "LOAD_BALANCER",
+          "tier": 2,
+          "count": 1,
+          "stateful": false,
+          "x": 180,
+          "y": 180
+        },
+        {
+          "id": "srv-1",
+          "type": "SERVER",
+          "tier": 2,
+          "count": 4,
+          "stateful": false,
+          "x": 406,
+          "y": 195
+        },
+        {
+          "id": "db-1",
+          "type": "DATABASE",
+          "tier": 2,
+          "count": 1,
+          "stateful": true,
+          "x": 681,
+          "y": 204
+        },
+        {
+          "id": "cache-6544",
+          "type": "CACHE",
+          "tier": 1,
+          "count": 1,
+          "stateful": true,
+          "x": 658,
+          "y": 364
+        },
+        {
+          "id": "database-3225",
+          "type": "DATABASE",
+          "tier": 1,
+          "count": 1,
+          "stateful": true,
+          "x": 674,
+          "y": 42
+        },
+        {
+          "id": "server-3692",
+          "type": "SERVER",
+          "tier": 1,
+          "count": 1,
+          "stateful": false,
+          "x": 401,
+          "y": 328
+        }
+      ],
+      "connections": [
+        {
+          "from": "lb-1",
+          "to": "srv-1"
+        },
+        {
+          "from": "lb-1",
+          "to": "server-3692"
+        },
+        {
+          "from": "srv-1",
+          "to": "cache-6544"
+        },
+        {
+          "from": "srv-1",
+          "to": "db-1"
+        },
+        {
+          "from": "srv-1",
+          "to": "database-3225"
+        },
+        {
+          "from": "server-3692",
+          "to": "cache-6544"
+        },
+        {
+          "from": "server-3692",
+          "to": "db-1"
+        },
+        {
+          "from": "server-3692",
+          "to": "database-3225"
+        }
+      ],
+      "createdAt": "2026-10-17T12:57:10.423Z"
+    },
+    {
+      "id": "bp-1792241952235",
+      "username": "Anil_Architect",
+      "missionId": 4,
+      "grade": "S",
+      "stars": 3,
+      "avgLatency": 15,
+      "totalCost": 3680,
+      "nodes": [
+        {
+          "id": "lb-1",
+          "type": "LOAD_BALANCER",
+          "tier": 2,
+          "count": 1,
+          "stateful": false,
+          "x": 402,
+          "y": 226
+        },
+        {
+          "id": "srv-1",
+          "type": "SERVER",
+          "tier": 3,
+          "count": 2,
+          "stateful": false,
+          "x": 605,
+          "y": 276
+        },
+        {
+          "id": "cache-1",
+          "type": "CACHE",
+          "tier": 2,
+          "count": 1,
+          "stateful": true,
+          "x": 857,
+          "y": 72
+        },
+        {
+          "id": "db-1",
+          "type": "DATABASE",
+          "tier": 2,
+          "count": 1,
+          "stateful": true,
+          "x": 833,
+          "y": 397
+        },
+        {
+          "id": "cdn-8772",
+          "type": "CDN",
+          "tier": 1,
+          "count": 1,
+          "stateful": false,
+          "x": 108,
+          "y": 382
+        },
+        {
+          "id": "cdn-8989",
+          "type": "CDN",
+          "tier": 1,
+          "count": 1,
+          "stateful": false,
+          "x": 134,
+          "y": 88
+        },
+        {
+          "id": "database-2245",
+          "type": "DATABASE",
+          "tier": 2,
+          "count": 1,
+          "stateful": true,
+          "x": 835,
+          "y": 276
+        },
+        {
+          "id": "server-2757",
+          "type": "SERVER",
+          "tier": 1,
+          "count": 1,
+          "stateful": false,
+          "x": 607,
+          "y": 131
+        }
+      ],
+      "connections": [
+        {
+          "from": "cdn-8772",
+          "to": "lb-1"
+        },
+        {
+          "from": "cdn-8989",
+          "to": "lb-1"
+        },
+        {
+          "from": "lb-1",
+          "to": "srv-1"
+        },
+        {
+          "from": "lb-1",
+          "to": "server-2757"
+        },
+        {
+          "from": "srv-1",
+          "to": "cache-1"
+        },
+        {
+          "from": "srv-1",
+          "to": "db-1"
+        },
+        {
+          "from": "srv-1",
+          "to": "database-2245"
+        },
+        {
+          "from": "server-2757",
+          "to": "cache-1"
+        },
+        {
+          "from": "server-2757",
+          "to": "db-1"
+        },
+        {
+          "from": "server-2757",
+          "to": "database-2245"
+        }
+      ],
+      "createdAt": "2026-10-17T12:59:12.235Z"
+    },
+    {
+      "id": "bp-1792242004269",
+      "username": "Anil_Architect",
+      "missionId": 4,
+      "grade": "A",
+      "stars": 2,
+      "avgLatency": 49,
+      "totalCost": 3232,
+      "nodes": [
+        {
+          "id": "lb-1",
+          "type": "LOAD_BALANCER",
+          "tier": 2,
+          "count": 1,
+          "stateful": false,
+          "x": 402,
+          "y": 226
+        },
+        {
+          "id": "cache-1",
+          "type": "CACHE",
+          "tier": 2,
+          "count": 1,
+          "stateful": true,
+          "x": 854,
+          "y": 19
+        },
+        {
+          "id": "db-1",
+          "type": "DATABASE",
+          "tier": 2,
+          "count": 1,
+          "stateful": true,
+          "x": 896,
+          "y": 429
+        },
+        {
+          "id": "cdn-8772",
+          "type": "CDN",
+          "tier": 1,
+          "count": 1,
+          "stateful": false,
+          "x": 108,
+          "y": 382
+        },
+        {
+          "id": "cdn-8989",
+          "type": "CDN",
+          "tier": 1,
+          "count": 1,
+          "stateful": false,
+          "x": 134,
+          "y": 88
+        },
+        {
+          "id": "server-2757",
+          "type": "SERVER",
+          "tier": 3,
+          "count": 1,
+          "stateful": false,
+          "x": 607,
+          "y": 131
+        },
+        {
+          "id": "database-1685",
+          "type": "DATABASE",
+          "tier": 2,
+          "count": 1,
+          "stateful": true,
+          "x": 947,
+          "y": 279
+        },
+        {
+          "id": "server-7830",
+          "type": "SERVER",
+          "tier": 1,
+          "count": 1,
+          "stateful": false,
+          "x": 629,
+          "y": 272
+        }
+      ],
+      "connections": [
+        {
+          "from": "cdn-8772",
+          "to": "lb-1"
+        },
+        {
+          "from": "cdn-8989",
+          "to": "lb-1"
+        },
+        {
+          "from": "lb-1",
+          "to": "server-2757"
+        },
+        {
+          "from": "lb-1",
+          "to": "server-7830"
+        },
+        {
+          "from": "server-2757",
+          "to": "cache-1"
+        },
+        {
+          "from": "server-2757",
+          "to": "db-1"
+        },
+        {
+          "from": "server-2757",
+          "to": "database-1685"
+        },
+        {
+          "from": "server-7830",
+          "to": "cache-1"
+        },
+        {
+          "from": "server-7830",
+          "to": "db-1"
+        },
+        {
+          "from": "server-7830",
+          "to": "database-1685"
+        }
+      ],
+      "createdAt": "2026-10-17T13:00:04.269Z"
+    }
+  ],
   "customMissions": []
 }

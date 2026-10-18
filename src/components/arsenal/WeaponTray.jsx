@@ -1,5 +1,18 @@
 import React from 'react';
-import { Cpu, Database, Shuffle, Zap, Globe, Layers, ShieldAlert, Boxes, Lock } from 'lucide-react';
+import {
+  Cpu,
+  Database,
+  Shuffle,
+  Zap,
+  Globe,
+  Layers,
+  ShieldAlert,
+  Boxes,
+  Search,
+  HardDrive,
+  GitMerge,
+  Lock
+} from 'lucide-react';
 import { WEAPON_REGISTRY } from '../../constants/weapons';
 import { sfx } from '../../engine/audioManager';
 
@@ -11,7 +24,10 @@ const ICONS = {
   Globe,
   Layers,
   ShieldAlert,
-  Boxes
+  Boxes,
+  Search,
+  HardDrive,
+  GitMerge
 };
 
 export function WeaponTray({
@@ -57,7 +73,10 @@ export function WeaponTray({
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 min-w-0">
-                  <IconComp className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0" />
+                  <IconComp
+                    className="w-3.5 h-3.5 flex-shrink-0"
+                    style={{ color: isUnlocked ? weapon.color : '#71717a' }}
+                  />
                   <span className="text-xs font-medium text-zinc-200 truncate">
                     {weapon.realName.split('(')[0].trim()}
                   </span>

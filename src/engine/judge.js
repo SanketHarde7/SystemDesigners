@@ -2,15 +2,23 @@ import { solveNetworkTopology } from './simulation';
 
 /**
  * Executes the 3-Wave Boss Siege simulation.
- * Wave 1: Baseline Traffic (1.0x Target RPS)
- * Wave 2: Flash Surge (1.35x Target RPS)
- * Wave 3: Chaos Monkey Outage (random component outage test)
+ * Evaluates ANY valid architecture based on real capacity, resilience, and SLA limits.
  */
 export async function runSiegeEvaluation({ mission, nodes, connections, onProgress }) {
+  // Only Mission 4 (explicit Chaos Monkey mission) and Mission 8 (Capstone) inject hardware faults in Wave 3
+  const isChaosMission = mission.id === 4 || mission.id === 8;
+
   const steps = [
-    { wave: 1, name: 'Wave 1: Baseline Traffic Surge', mult: 1.0, chaos: null },
+    { wave: 1, name: 'Wave 1: Baseline Traffic Surge (1.0x)', mult: 1.0, chaos: null },
     { wave: 2, name: 'Wave 2: Flash Traffic Peak (1.35x)', mult: 1.35, chaos: null },
-    { wave: 3, name: 'Wave 3: Chaos Monkey Infiltration', mult: 1.20, chaos: 'RANDOM' }
+    {
+      wave: 3,
+      name: isChaosMission
+        ? 'Wave 3: Chaos Monkey AZ Failover Test (1.20x)'
+        : 'Wave 3: Sustained Endurance Load (1.20x)',
+      mult: 1.2,
+      chaos: isChaosMission ? 'RANDOM' : null
+    }
   ];
 
   const waveResults = [];
@@ -22,11 +30,18 @@ export async function runSiegeEvaluation({ mission, nodes, connections, onProgre
     if (onProgress) {
       onProgress({ wave: step.wave, total: 3, name: step.name });
     }
-    await new Promise(r => setTimeout(r, 650));
+
+    await new Promise(r => setTimeout(r, 600));
 
     let chaosVictimId = null;
     if (step.chaos === 'RANDOM') {
-      const killable = nodes.filter(n => n.type === 'SERVER' || n.type === 'LOAD_BALANCER' || n.type === 'CACHE');
+      const killable = nodes.filter(
+        n =>
+          n.type === 'SERVER' ||
+          n.type === 'LOAD_BALANCER' ||
+          n.type === 'DATABASE' ||
+          n.type === 'CACHE'
+      );
       if (killable.length > 0) {
         chaosVictimId = killable[Math.floor(Math.random() * killable.length)].id;
       }
@@ -44,7 +59,12 @@ export async function runSiegeEvaluation({ mission, nodes, connections, onProgre
     if (metrics.totalCost > mission.budget) budgetFailed = true;
     if (metrics.totalPower > mission.maxPower) powerFailed = true;
 
-    const wavePassed = metrics.serverLoad <= 1.05 && metrics.dbLoad <= 1.15 && !metrics.hasSPOF;
+    const wavePassed =
+      metrics.serverLoad <= 1.10 &&
+      metrics.dbLoad <= 1.15 &&
+      (metrics.lbLoad || 0) <= 1.15 &&
+      !metrics.hasSPOF;
+
     waveResults.push({
       wave: step.wave,
       name: step.name,
@@ -59,16 +79,18 @@ export async function runSiegeEvaluation({ mission, nodes, connections, onProgre
   }
 
   const allPassed = waveResults.every(w => w.passed) && !budgetFailed && !powerFailed;
-  const avgLatency = Math.round(waveResults.reduce((acc, w) => acc + w.latencyMs, 0) / waveResults.length);
-  
+  const avgLatency = Math.round(
+    waveResults.reduce((acc, w) => acc + w.latencyMs, 0) / waveResults.length
+  );
+
   let grade = 'F';
   let stars = 0;
 
   if (allPassed) {
-    if (avgLatency <= 35) {
+    if (avgLatency <= 40) {
       grade = 'S';
       stars = 3;
-    } else if (avgLatency <= 60) {
+    } else if (avgLatency <= 75) {
       grade = 'A';
       stars = 2;
     } else {
@@ -82,22 +104,36 @@ export async function runSiegeEvaluation({ mission, nodes, connections, onProgre
 
   const diagnostics = [];
   if (budgetFailed) {
-    diagnostics.push('❌ Budget Exceeded: You spent more Gold Credits than authorized for this mission.');
+    diagnostics.push(
+      '❌ Budget Exceeded: Total hardware cost exceeded the mission budget. Try using caching, queues, or lower-tier horizontal replicas.'
+    );
   }
   if (powerFailed) {
-    diagnostics.push('❌ Reactor Core Overheated: Total energy requirement surpassed maximum power cap.');
+    diagnostics.push(
+      '❌ Power Limit Exceeded: Total MW power draw surpassed the mission envelope.'
+    );
   }
-  if (waveResults.some(w => w.serverLoad > 1.05)) {
-    diagnostics.push('⚠️ Server Meltdown: Compute turrets bottlenecked. Add more servers or upgrade tiers.');
+  if (waveResults.some(w => w.serverLoad > 1.10)) {
+    const peakSrv = Math.max(...waveResults.map(w => Math.round(w.serverLoad * 100)));
+    diagnostics.push(
+      `❌ Compute Bottleneck (Peak ${peakSrv}% CPU): Upgrade Server tier (e.g., Tier 2/3), scale out replicas, add Serverless Lambda, or offload traffic via CDN/WAF/Cache.`
+    );
   }
   if (waveResults.some(w => w.dbLoad > 1.15)) {
-    diagnostics.push('⚠️ Database Exhaustion: SQL vault struggled under write/read locks. Deploy Caching or Message Queues.');
+    const peakDb = Math.max(...waveResults.map(w => Math.round(w.dbLoad * 100)));
+    diagnostics.push(
+      `❌ Storage I/O Bottleneck (Peak ${peakDb}% DB Load): Upgrade Database tier, scale out DB replicas, add Redis Cache for reads, or add a Message Queue / Sharded DB for writes.`
+    );
   }
   if (waveResults.some(w => w.spof)) {
-    diagnostics.push('⚠️ Single Point of Failure: The system could not endure Chaos Monkey node failure without dropping traffic.');
+    diagnostics.push(
+      '❌ Missing Critical Layer: Every architecture requires at least one active Compute node and one active Database/Storage node.'
+    );
   }
   if (allPassed) {
-    diagnostics.push(`🏆 Outstanding Architecture: P99 latency maintained at ${avgLatency}ms. All SLA requirements fulfilled.`);
+    diagnostics.push(
+      `✅ SLA Benchmark Passed! Average P99 latency maintained at ${avgLatency}ms across all 3 waves.`
+    );
   }
 
   return {

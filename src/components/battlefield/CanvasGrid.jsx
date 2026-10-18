@@ -17,9 +17,15 @@ export function CanvasGrid({
   const containerRef = useRef(null);
   const draggingNodeRef = useRef(null);
   const dragOffsetRef = useRef({ x: 0, y: 0 });
+  const activeWireRef = useRef(null);
+  const onMoveNodeRef = useRef(onMoveNode);
 
   // State for manual drag-to-connect wire
   const [activeWire, setActiveWire] = useState(null);
+
+  useEffect(() => {
+    onMoveNodeRef.current = onMoveNode;
+  }, [onMoveNode]);
 
   const handleNodeMouseDown = (node, e) => {
     e.stopPropagation();
@@ -37,17 +43,21 @@ export function CanvasGrid({
   const handleStartWire = (fromId, e) => {
     if (!containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
-    setActiveWire({
+    const wire = {
       fromId,
       toX: e.clientX - rect.left,
       toY: e.clientY - rect.top
-    });
+    };
+    activeWireRef.current = wire;
+    setActiveWire(wire);
   };
 
   const handleCompleteWire = (toId) => {
-    if (activeWire && activeWire.fromId !== toId) {
-      onAddConnection(activeWire.fromId, toId);
+    const currentWire = activeWireRef.current;
+    if (currentWire && currentWire.fromId !== toId && onAddConnection) {
+      onAddConnection(currentWire.fromId, toId);
     }
+    activeWireRef.current = null;
     setActiveWire(null);
   };
 
@@ -57,33 +67,32 @@ export function CanvasGrid({
       const rect = containerRef.current.getBoundingClientRect();
 
       // 1. Smooth 1:1 Node Dragging
-      if (draggingNodeRef.current) {
+      if (draggingNodeRef.current && onMoveNodeRef.current) {
         let newX = e.clientX - rect.left - dragOffsetRef.current.x;
         let newY = e.clientY - rect.top - dragOffsetRef.current.y;
-
         newX = Math.max(16, Math.min(rect.width - 190, newX));
         newY = Math.max(16, Math.min(rect.height - 110, newY));
-
-        onMoveNode(draggingNodeRef.current, Math.round(newX), Math.round(newY));
+        onMoveNodeRef.current(draggingNodeRef.current, Math.round(newX), Math.round(newY));
       }
 
       // 2. Live Wire Drawing
-      if (activeWire) {
-        setActiveWire(prev =>
-          prev
-            ? {
-                ...prev,
-                toX: e.clientX - rect.left,
-                toY: e.clientY - rect.top
-              }
-            : null
-        );
+      if (activeWireRef.current) {
+        const updated = {
+          ...activeWireRef.current,
+          toX: e.clientX - rect.left,
+          toY: e.clientY - rect.top
+        };
+        activeWireRef.current = updated;
+        setActiveWire(updated);
       }
     };
 
     const handleMouseUp = () => {
       draggingNodeRef.current = null;
-      setActiveWire(null);
+      if (activeWireRef.current) {
+        activeWireRef.current = null;
+        setActiveWire(null);
+      }
     };
 
     window.addEventListener('mousemove', handleMouseMove);
@@ -92,7 +101,7 @@ export function CanvasGrid({
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [activeWire, onMoveNode]);
+  }, []);
 
   return (
     <div
@@ -110,7 +119,7 @@ export function CanvasGrid({
         </div>
         <div className="hidden md:flex items-center gap-1.5 px-2 py-0.5 rounded bg-zinc-900/90 border border-zinc-800 text-[10px] text-zinc-400">
           <Cable className="w-3 h-3 text-indigo-400" />
-          <span>Drag from any node’s Right Dot to another node’s Left Dot to wire • Click a wire to remove</span>
+          <span>Drag from any node's Right Dot to another node's Left Dot to wire • Click a wire to remove</span>
         </div>
       </div>
 

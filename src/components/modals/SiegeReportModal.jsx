@@ -12,11 +12,13 @@ import {
   ShieldAlert
 } from 'lucide-react';
 
-export function SiegeReportModal({ report, onNextMission, onRetry, isLastMission }) {
+export function SiegeReportModal({ report, mission, onNextMission, onRetry, isLastMission }) {
   const [activeTab, setActiveTab] = useState('telemetry'); // 'telemetry' | 'docs'
 
   if (!report) return null;
+
   const isSuccess = report.success;
+  const learnings = mission?.learnings;
 
   const gradeBadgeStyle = {
     S: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/30',
@@ -122,7 +124,9 @@ export function SiegeReportModal({ report, onNextMission, onRetry, isLastMission
               <div>
                 <div className="text-[11px] font-medium text-zinc-400 mb-2.5 flex items-center justify-between">
                   <span>Stress Test Phases</span>
-                  <span className="font-mono text-[10px] text-zinc-500"> PEAK TRAFFIC: {peakRps.toLocaleString()} RPS</span>
+                  <span className="font-mono text-[10px] text-zinc-500">
+                    PEAK TRAFFIC: {peakRps.toLocaleString()} RPS
+                  </span>
                 </div>
                 <div className="border border-zinc-800/90 rounded-lg overflow-hidden bg-[#09090b]">
                   <table className="w-full text-left border-collapse">
@@ -146,13 +150,13 @@ export function SiegeReportModal({ report, onNextMission, onRetry, isLastMission
                             {w.testRps.toLocaleString()} rps
                           </td>
                           <td className="py-2.5 px-3">
-                            <span className={w.serverLoad > 1.0 ? 'text-rose-400' : 'text-zinc-300'}>
-                              {Math.round(w.serverLoad * 100)}%
+                            <span className={w.serverLoad > 1.05 ? 'text-rose-400' : 'text-zinc-300'}>
+                              {Math.min(999, Math.round(w.serverLoad * 100))}%
                             </span>
                           </td>
                           <td className="py-2.5 px-3">
-                            <span className={w.dbLoad > 1.0 ? 'text-rose-400' : 'text-zinc-300'}>
-                              {Math.round(w.dbLoad * 100)}%
+                            <span className={w.dbLoad > 1.15 ? 'text-rose-400' : 'text-zinc-300'}>
+                              {Math.min(999, Math.round(w.dbLoad * 100))}%
                             </span>
                           </td>
                           <td className="py-2.5 px-3 text-zinc-300">{w.latencyMs}ms</td>
@@ -181,8 +185,8 @@ export function SiegeReportModal({ report, onNextMission, onRetry, isLastMission
                 </div>
                 <div className="space-y-1.5 font-mono text-[11px]">
                   {report.diagnostics.map((diag, idx) => {
-                    const cleanText = diag.replace(/[❌⚠️🏆]/g, '').trim();
-                    const isError = diag.includes('❌') || diag.includes('⚠️');
+                    const isError = diag.includes('❌');
+                    const cleanText = diag.replace(/[❌✅]/g, '').trim();
                     return (
                       <div
                         key={idx}
@@ -210,11 +214,37 @@ export function SiegeReportModal({ report, onNextMission, onRetry, isLastMission
                 <p className="text-zinc-300 leading-relaxed">
                   During this benchmark, the topology was subjected to a peak surge of{' '}
                   <span className="font-mono text-zinc-100 font-semibold">{peakRps.toLocaleString()} RPS</span>{' '}
-                  (1.35x baseline) followed by a live Chaos Monkey instance termination. Compute utilization peaked at{' '}
-                  <span className="font-mono text-zinc-100 font-semibold">{maxServerLoad}%</span> and storage I/O reached{' '}
-                  <span className="font-mono text-zinc-100 font-semibold">{maxDbLoad}%</span>.
+                  (1.35x baseline). Compute utilization peaked at{' '}
+                  <span className="font-mono text-zinc-100 font-semibold">{Math.min(999, maxServerLoad)}%</span> and storage I/O reached{' '}
+                  <span className="font-mono text-zinc-100 font-semibold">{Math.min(999, maxDbLoad)}%</span>.
                 </p>
               </div>
+
+              {learnings && (
+                <div className="p-4 rounded-lg bg-[#09090b] border border-zinc-800 space-y-3">
+                  <div className="text-[10px] font-mono uppercase text-emerald-400 tracking-wider">
+                    2. Deep Dive: {learnings.issueTitle}
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-[11px] font-semibold text-zinc-200">What Happened:</span>
+                    <p className="text-[11px] text-zinc-400 leading-relaxed">{learnings.whatWasTheIssue}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-[11px] font-semibold text-zinc-200">Real-World Production Fix:</span>
+                    <p className="text-[11px] text-zinc-400 leading-relaxed">{learnings.realWorldFix}</p>
+                  </div>
+                  {learnings.howToIdentify && (
+                    <div className="space-y-1">
+                      <span className="text-[11px] font-semibold text-zinc-200">How Engineers Identify This in Production:</span>
+                      <ul className="list-disc list-inside text-[11px] text-zinc-400 space-y-1">
+                        {learnings.howToIdentify.map((item, i) => (
+                          <li key={i}>{item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div className="p-3 rounded-lg bg-[#09090b] border border-zinc-800 space-y-1">
@@ -225,7 +255,7 @@ export function SiegeReportModal({ report, onNextMission, onRetry, isLastMission
                   <p className="text-[11px] text-zinc-400 leading-relaxed">
                     {maxServerLoad <= 85
                       ? 'Optimal headroom maintained (<85% CPU). Queuing delay remained linear.'
-                      : 'Saturation detected (>85% CPU). According to Little’s Law, M/M/1 queueing latency grows exponentially near 100% utilization.'}
+                      : "Saturation detected (>85% CPU). According to Little's Law, M/M/1 queueing latency grows exponentially near 100% utilization."}
                   </p>
                 </div>
 
@@ -248,21 +278,10 @@ export function SiegeReportModal({ report, onNextMission, onRetry, isLastMission
                   </div>
                   <p className="text-[11px] text-zinc-400 leading-relaxed">
                     {report.waveResults.some(w => w.spof)
-                      ? 'Single Point of Failure (SPOF) triggered outage during Wave 3 node termination.'
-                      : 'N+1 Redundancy verified. Traffic seamlessly failed over during Chaos node termination.'}
+                      ? 'Single Point of Failure (SPOF) triggered outage during Wave 3 testing.'
+                      : 'N+1 Redundancy verified. Traffic seamlessly failed over during Wave 3 testing.'}
                   </p>
                 </div>
-              </div>
-
-              <div className="p-4 rounded-lg bg-[#09090b] border border-zinc-800 space-y-1.5">
-                <div className="text-[10px] font-mono uppercase text-zinc-500">
-                  2. Production Engineering Takeaway
-                </div>
-                <p className="text-[11px] text-zinc-400 leading-relaxed">
-                  In real-world distributed systems, provisioning hardware for peak traffic alone is cost-prohibitive.
-                  High-performing architectures combine stateless horizontal compute behind Layer-7 load balancers,
-                  in-memory caching (85–95% hit rates) to shield relational storage, and asynchronous event streams to flatten bursty write spikes.
-                </p>
               </div>
             </div>
           )}
