@@ -1,11 +1,6 @@
 import { solveNetworkTopology } from './simulation';
 
-/**
- * Executes the 3-Wave Boss Siege simulation.
- * Evaluates ANY valid architecture based on real capacity, resilience, and SLA limits.
- */
 export async function runSiegeEvaluation({ mission, nodes, connections, onProgress }) {
-  // Only Mission 4 (explicit Chaos Monkey mission) and Mission 8 (Capstone) inject hardware faults in Wave 3
   const isChaosMission = mission.id === 4 || mission.id === 8;
 
   const steps = [
@@ -24,6 +19,7 @@ export async function runSiegeEvaluation({ mission, nodes, connections, onProgre
   const waveResults = [];
   let budgetFailed = false;
   let powerFailed = false;
+  const collectedErrors = new Set();
 
   for (let i = 0; i < steps.length; i++) {
     const step = steps[i];
@@ -53,11 +49,19 @@ export async function runSiegeEvaluation({ mission, nodes, connections, onProgre
       connections,
       targetRps: testRps,
       trafficProfile: mission.trafficProfile,
+      requiresStrongConsistency: Boolean(mission.requiresStrongConsistency),
       chaosVictimId
     });
 
     if (metrics.totalCost > mission.budget) budgetFailed = true;
     if (metrics.totalPower > mission.maxPower) powerFailed = true;
+
+    (metrics.configErrors || []).forEach(err => collectedErrors.add(err));
+    if (metrics.unconnectedCount > 0) {
+      collectedErrors.add(
+        `${metrics.unconnectedCount} deployed component(s) are UNWIRED! Connect them into the graph or delete unused nodes.`
+      );
+    }
 
     const wavePassed =
       metrics.serverLoad <= 1.10 &&
@@ -113,6 +117,9 @@ export async function runSiegeEvaluation({ mission, nodes, connections, onProgre
       '❌ Power Limit Exceeded: Total MW power draw surpassed the mission envelope.'
     );
   }
+  collectedErrors.forEach(err => {
+    diagnostics.push(`❌ ${err}`);
+  });
   if (waveResults.some(w => w.serverLoad > 1.10)) {
     const peakSrv = Math.max(...waveResults.map(w => Math.round(w.serverLoad * 100)));
     diagnostics.push(
@@ -123,11 +130,6 @@ export async function runSiegeEvaluation({ mission, nodes, connections, onProgre
     const peakDb = Math.max(...waveResults.map(w => Math.round(w.dbLoad * 100)));
     diagnostics.push(
       `❌ Storage I/O Bottleneck (Peak ${peakDb}% DB Load): Upgrade Database tier, scale out DB replicas, add Redis Cache for reads, or add a Message Queue / Sharded DB for writes.`
-    );
-  }
-  if (waveResults.some(w => w.spof)) {
-    diagnostics.push(
-      '❌ Missing Critical Layer: Every architecture requires at least one active Compute node and one active Database/Storage node.'
     );
   }
   if (allPassed) {
