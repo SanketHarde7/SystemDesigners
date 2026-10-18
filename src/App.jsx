@@ -15,9 +15,19 @@ import { IaCExportModal } from './components/modals/IaCExportModal';
 import { CustomMissionModal } from './components/modals/CustomMissionModal';
 import { LeaderboardModal } from './components/modals/LeaderboardModal';
 import { ProblemBriefModal } from './components/modals/ProblemBriefModal';
-import { Play, GitBranch, HelpCircle, ChevronUp, ChevronDown, Activity, FileText } from 'lucide-react';
+import {
+  Play,
+  GitBranch,
+  HelpCircle,
+  ChevronUp,
+  ChevronDown,
+  Activity,
+  FileText,
+  RotateCcw,
+  Calculator,
+  X
+} from 'lucide-react';
 
-// Helper to build smart topology connections for any set of nodes
 function buildAutoConnections(nodeList) {
   const newConns = [];
   const addEdge = (from, to) => {
@@ -79,6 +89,11 @@ export default function App() {
   const [isCustomMissionOpen, setIsCustomMissionOpen] = useState(false);
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
   const [isBriefOpen, setIsBriefOpen] = useState(false);
+  const [isCalculatorOpen, setIsCalculatorOpen] = useState(false);
+
+  const [calcDauMillions, setCalcDauMillions] = useState(10);
+  const [calcReqPerUser, setCalcReqPerUser] = useState(20);
+  const [calcPayloadKb, setCalcPayloadKb] = useState(15);
 
   useEffect(() => {
     setNodes(mission.initialNodes);
@@ -114,12 +129,73 @@ export default function App() {
   };
 
   const handleUpgradeTier = (id) => {
-    setNodes(prev => prev.map(n => (n.id === id ? { ...n, tier: (n.tier || 1) + 1 } : n)));
+    setNodes(prev =>
+      prev.map(n => {
+        if (n.id !== id) return n;
+        const reg = WEAPON_REGISTRY[n.type];
+        const currentTier = n.tier || 1;
+        if (!reg || currentTier >= reg.tiers.length) return n;
+
+        const nextTierData = reg.tiers[currentTier];
+        const currentTierData = reg.tiers[currentTier - 1];
+        const count = n.count || 1;
+        const extraCost = Math.round(reg.cost * (nextTierData.costMult - currentTierData.costMult) * count);
+        const extraPower = Math.round(reg.power * (nextTierData.powerMult - currentTierData.powerMult) * count);
+
+        if (metrics.totalCost + extraCost > mission.budget || metrics.totalPower + extraPower > mission.maxPower) {
+          return n;
+        }
+        sfx.playTurretUpgrade();
+        return { ...n, tier: currentTier + 1 };
+      })
+    );
   };
 
-  const handleUpdateCount = (id, count) => {
-    if (count < 1) return;
-    setNodes(prev => prev.map(n => (n.id === id ? { ...n, count } : n)));
+  const handleDowngradeTier = (id) => {
+    setNodes(prev =>
+      prev.map(n => {
+        if (n.id !== id) return n;
+        const currentTier = n.tier || 1;
+        if (currentTier <= 1) return n;
+        sfx.playTurretUpgrade();
+        return { ...n, tier: currentTier - 1 };
+      })
+    );
+  };
+
+  const handleSetTier = (id, targetTier) => {
+    setNodes(prev =>
+      prev.map(n => {
+        if (n.id !== id) return n;
+        const reg = WEAPON_REGISTRY[n.type];
+        if (!reg || targetTier < 1 || targetTier > reg.tiers.length) return n;
+        return { ...n, tier: targetTier };
+      })
+    );
+  };
+
+  const handleUpdateCount = (id, newCount) => {
+    if (newCount < 1) return;
+    setNodes(prev =>
+      prev.map(n => {
+        if (n.id !== id) return n;
+        const currentCount = n.count || 1;
+        if (newCount > currentCount) {
+          const reg = WEAPON_REGISTRY[n.type];
+          const tierData = reg?.tiers[(n.tier || 1) - 1] || reg?.tiers[0];
+          const singleCost = Math.round((reg?.cost || 100) * (tierData?.costMult || 1));
+          const singlePower = Math.round((reg?.power || 10) * (tierData?.powerMult || 1));
+          if (
+            metrics.totalCost + singleCost > mission.budget ||
+            metrics.totalPower + singlePower > mission.maxPower
+          ) {
+            return n;
+          }
+        }
+        sfx.playTurretUpgrade();
+        return { ...n, count: newCount };
+      })
+    );
   };
 
   const handleToggleStateful = (id) => {
@@ -135,9 +211,33 @@ export default function App() {
   };
 
   const handleDeleteNode = (id) => {
-    const remainingNodes = nodes.filter(n => n.id !== id);
-    setNodes(remainingNodes);
+    if (!id) return;
+    sfx.playLaserShot();
+    setNodes(prev => prev.filter(n => n.id !== id));
     setConnections(prev => prev.filter(c => c.from !== id && c.to !== id));
+    setSelectedNodeId(prev => (prev === id ? null : prev));
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (!selectedNodeId) return;
+      const tag = document.activeElement?.tagName?.toLowerCase();
+      if (tag === 'input' || tag === 'textarea') return;
+
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault();
+        handleDeleteNode(selectedNodeId);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedNodeId]);
+
+  const handleResetMission = () => {
+    sfx.playTurretUpgrade();
+    setNodes(mission.initialNodes);
+    setConnections(mission.initialConnections);
     setSelectedNodeId(null);
   };
 
@@ -157,7 +257,6 @@ export default function App() {
     setConnections(prev => prev.filter(c => !(c.from === fromId && c.to === toId)));
   };
 
-  // Deploying a weapon automatically wires it into the topology so it works immediately!
   const handleDeployWeapon = (weaponType) => {
     const reg = WEAPON_REGISTRY[weaponType];
     const newId = `${weaponType.toLowerCase()}-${Date.now().toString().slice(-4)}`;
@@ -167,7 +266,7 @@ export default function App() {
       tier: 1,
       count: 1,
       stateful: reg ? reg.stateType === 'STATEFUL' : false,
-      x: 260 + Math.floor(Math.random() * 140),
+      x: 280 + Math.floor(Math.random() * 140),
       y: 120 + Math.floor(Math.random() * 140)
     };
     const updatedNodes = [...nodes, newNode];
@@ -246,9 +345,16 @@ export default function App() {
     }
   };
 
+  const avgQps = Math.round((calcDauMillions * 1_000_000 * calcReqPerUser) / 86400);
+  const peakQps = Math.round(avgQps * 2.5);
+  const bandwidthMbps = Math.round((peakQps * calcPayloadKb * 8) / 1000);
+  const storageTbPerYear = (
+    ((calcDauMillions * 1_000_000 * (calcReqPerUser * 0.2) * calcPayloadKb) / 1_000_000_000) *
+    365
+  ).toFixed(1);
+
   return (
-    <div className="flex flex-col h-screen w-screen bg-[#09090b] text-zinc-100 overflow-hidden select-none">
-      {/* 1. Minimal Enterprise Header */}
+    <div className="flex flex-col h-screen w-screen bg-[#060913] text-zinc-100 overflow-hidden select-none">
       <Header
         missions={missions}
         currentMission={currentMissionIdx}
@@ -260,30 +366,30 @@ export default function App() {
         onOpenIaC={() => setIsIaCOpen(true)}
         onOpenCustomMission={() => setIsCustomMissionOpen(true)}
         onOpenLeaderboard={() => setIsLeaderboardOpen(true)}
+        onOpenCalculator={() => setIsCalculatorOpen(true)}
         isMuted={isMuted}
         onToggleMute={() => setIsMuted(sfx.toggleMute())}
         onUnlockAll={() => setUnlockedWeapons(Object.keys(WEAPON_REGISTRY))}
       />
 
-      {/* 2. Sub-Header Control Bar */}
-      <div className="h-12 px-4 bg-[#121215] border-b border-zinc-800/80 flex items-center justify-between gap-4 z-20">
+      <div className="h-12 px-4 bg-[#0b1120] border-b border-slate-800/90 flex items-center justify-between gap-4 z-20">
         <div className="flex items-center gap-3 min-w-0">
-          <span className="px-2 py-0.5 rounded bg-zinc-800/90 border border-zinc-700/70 font-mono text-[11px] text-zinc-300 font-medium whitespace-nowrap">
-            {mission.concept}
+          <span className="px-2.5 py-0.5 rounded-md bg-indigo-500/20 border border-indigo-500/40 font-mono text-[11px] text-indigo-300 font-semibold whitespace-nowrap">
+            🎯 {mission.concept}
           </span>
-          <p className="text-xs text-zinc-400 truncate">
+          <p className="text-xs text-slate-300 font-medium truncate">
             {mission.objective}
           </p>
-          <div className="hidden xl:flex items-center gap-1.5 pl-2 border-l border-zinc-800 text-xs font-mono">
-            <Activity className="w-3.5 h-3.5 text-zinc-500" />
-            <span className="text-zinc-500">Est. Latency:</span>
+          <div className="hidden xl:flex items-center gap-1.5 pl-3 border-l border-slate-800 text-xs font-mono">
+            <Activity className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="text-slate-400">Est. Ping:</span>
             <span
               className={
                 metrics.latencyMs <= 50
-                  ? 'text-emerald-400 font-medium'
+                  ? 'text-emerald-400 font-bold'
                   : metrics.latencyMs <= 120
-                  ? 'text-amber-400 font-medium'
-                  : 'text-rose-400 font-medium'
+                  ? 'text-amber-400 font-bold'
+                  : 'text-rose-400 font-bold'
               }
             >
               {metrics.latencyMs}ms
@@ -291,63 +397,70 @@ export default function App() {
           </div>
         </div>
 
-        {/* Action Bar */}
         <div className="flex items-center gap-2 flex-shrink-0">
           <button
             onClick={() => setIsBriefOpen(true)}
-            className="h-8 px-3 rounded-md bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 hover:border-zinc-700 text-xs font-medium flex items-center gap-1.5 transition-colors"
+            className="h-8 px-3 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-colors"
           >
-            <FileText className="w-3.5 h-3.5 text-indigo-400" />
+            <FileText className="w-3.5 h-3.5 text-cyan-400" />
             <span>Mission Brief</span>
           </button>
 
           <button
             onClick={() => setShowWalkthrough(!showWalkthrough)}
-            className={`h-8 px-3 rounded-md text-xs font-medium border flex items-center gap-1.5 transition-colors ${
+            className={`h-8 px-3 rounded-lg text-xs font-semibold border flex items-center gap-1.5 transition-colors ${
               showWalkthrough
-                ? 'bg-zinc-800 text-zinc-100 border-zinc-700'
-                : 'bg-zinc-900 hover:bg-zinc-800 text-zinc-400 border-zinc-800'
+                ? 'bg-amber-500/15 text-amber-300 border-amber-500/40'
+                : 'bg-slate-900 hover:bg-slate-800 text-slate-400 border-slate-800'
             }`}
           >
-            <HelpCircle className="w-3.5 h-3.5 text-zinc-400" />
-            <span>Hints</span>
+            <HelpCircle className="w-3.5 h-3.5 text-amber-400" />
+            <span>Quest Hints</span>
             {showWalkthrough ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
           </button>
 
           <button
-            onClick={handleSmartAutoWire}
-            className="h-8 px-3 rounded-md bg-zinc-900 hover:bg-zinc-800 text-zinc-200 border border-zinc-800 hover:border-zinc-700 text-xs font-medium flex items-center gap-1.5 transition-colors"
+            onClick={handleResetMission}
+            title="Reset Map to Initial State"
+            className="h-8 px-2.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 text-xs font-semibold flex items-center gap-1 transition-colors"
           >
-            <GitBranch className="w-3.5 h-3.5 text-indigo-400" />
-            <span>Auto-Connect</span>
+            <RotateCcw className="w-3.5 h-3.5 text-slate-400" />
+            <span className="hidden sm:inline">Reset</span>
+          </button>
+
+          <button
+            onClick={handleSmartAutoWire}
+            className="h-8 px-3 rounded-lg bg-slate-900 hover:bg-slate-800 text-cyan-300 border border-cyan-500/30 hover:border-cyan-400 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+          >
+            <GitBranch className="w-3.5 h-3.5 text-cyan-400" />
+            <span>Auto-Wire</span>
           </button>
 
           <button
             disabled={isSiegeRunning}
             onClick={handleInitiateSiege}
-            className="h-8 px-4 rounded-md bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-medium text-xs flex items-center gap-1.5 shadow-sm transition-all active:scale-[0.99]"
+            className="h-8 px-4 rounded-lg bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 disabled:opacity-50 text-white font-bold text-xs flex items-center gap-1.5 shadow-lg shadow-indigo-600/30 transition-all active:scale-[0.98]"
           >
-            <Play className="w-3 h-3 fill-current" />
+            <Play className="w-3.5 h-3.5 fill-current" />
             <span>
-              {isSiegeRunning ? `Running Wave ${siegeProgress?.wave}/3...` : 'Run Benchmark'}
+              {isSiegeRunning ? `Wave ${siegeProgress?.wave}/3 Incoming...` : 'Launch Siege Test'}
             </span>
           </button>
         </div>
       </div>
 
-      {/* 3. Multi-Column Onboarding Stepper */}
       {showWalkthrough && mission.guidance && (
-        <div className="bg-[#0c0c0e] border-b border-zinc-800/80 px-4 py-2.5 z-20">
+        <div className="bg-[#080d1a] border-b border-indigo-500/20 px-4 py-2.5 z-20">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
             {mission.guidance.map((step, i) => (
               <div
                 key={i}
-                className="p-2.5 rounded-lg bg-[#121215] border border-zinc-800/70 flex items-start gap-2.5"
+                className="p-2.5 rounded-xl bg-[#0f172a] border border-slate-800 flex items-start gap-2.5"
               >
-                <span className="w-5 h-5 rounded-md bg-zinc-800 border border-zinc-700 text-zinc-300 font-mono text-[11px] font-semibold flex items-center justify-center flex-shrink-0 mt-0.5">
+                <span className="w-5 h-5 rounded-lg bg-indigo-500/20 border border-indigo-500/40 text-indigo-300 font-mono text-[11px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
                   {i + 1}
                 </span>
-                <p className="text-[11px] text-zinc-400 leading-relaxed">
+                <p className="text-[11px] text-slate-300 leading-relaxed">
                   {step}
                 </p>
               </div>
@@ -356,7 +469,6 @@ export default function App() {
         </div>
       )}
 
-      {/* 4. Main Interactive Architecture Canvas & Right Inspector */}
       <div className="flex-1 flex overflow-hidden relative">
         <CanvasGrid
           nodes={nodes}
@@ -364,10 +476,15 @@ export default function App() {
           selectedNodeId={selectedNodeId}
           onSelectNode={(id) => setSelectedNodeId(id)}
           metrics={metrics}
+          trafficProfile={mission.trafficProfile}
           isSiegeRunning={isSiegeRunning}
           onMoveNode={handleMoveNode}
           onAddConnection={handleAddConnection}
           onRemoveConnection={handleRemoveConnection}
+          onUpgradeTier={handleUpgradeTier}
+          onDowngradeTier={handleDowngradeTier}
+          onUpdateCount={handleUpdateCount}
+          onDeleteNode={handleDeleteNode}
         />
 
         {selectedNodeId && (
@@ -375,6 +492,8 @@ export default function App() {
             selectedNode={nodes.find(n => n.id === selectedNodeId)}
             onClose={() => setSelectedNodeId(null)}
             onUpgradeTier={handleUpgradeTier}
+            onDowngradeTier={handleDowngradeTier}
+            onSetTier={handleSetTier}
             onUpdateCount={handleUpdateCount}
             onToggleStateful={handleToggleStateful}
             onDeleteNode={handleDeleteNode}
@@ -386,7 +505,6 @@ export default function App() {
         )}
       </div>
 
-      {/* 5. Minimal Component Dock */}
       <WeaponTray
         unlockedWeapons={unlockedWeapons}
         onDeployWeapon={handleDeployWeapon}
@@ -396,7 +514,85 @@ export default function App() {
         maxPower={mission.maxPower}
       />
 
-      {/* 6. Modals */}
+      {isCalculatorOpen && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="w-full max-w-lg bg-[#0d1326] border border-indigo-500/40 rounded-2xl shadow-2xl overflow-hidden">
+            <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-[#080d1a]">
+              <div className="flex items-center gap-2">
+                <Calculator className="w-4 h-4 text-cyan-400" />
+                <h2 className="text-sm font-bold text-white">
+                  Back-of-the-Envelope System Estimator
+                </h2>
+              </div>
+              <button
+                onClick={() => setIsCalculatorOpen(false)}
+                className="p-1 text-slate-400 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4 text-xs">
+              <p className="text-slate-400 leading-relaxed">
+                In real interviews, you estimate traffic & storage before placing components. Adjust the inputs below to see how DAU translates into RPS and Storage:
+              </p>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div className="p-3 rounded-xl bg-[#080d1a] border border-slate-800">
+                  <label className="text-[10px] text-slate-400 block mb-1">Daily Active Users (M)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={calcDauMillions}
+                    onChange={(e) => setCalcDauMillions(Math.max(1, Number(e.target.value)))}
+                    className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white font-mono text-sm"
+                  />
+                </div>
+                <div className="p-3 rounded-xl bg-[#080d1a] border border-slate-800">
+                  <label className="text-[10px] text-slate-400 block mb-1">Actions / User / Day</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={calcReqPerUser}
+                    onChange={(e) => setCalcReqPerUser(Math.max(1, Number(e.target.value)))}
+                    className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white font-mono text-sm"
+                  />
+                </div>
+                <div className="p-3 rounded-xl bg-[#080d1a] border border-slate-800">
+                  <label className="text-[10px] text-slate-400 block mb-1">Avg Payload (KB)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={calcPayloadKb}
+                    onChange={(e) => setCalcPayloadKb(Math.max(1, Number(e.target.value)))}
+                    className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-white font-mono text-sm"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 pt-2 font-mono">
+                <div className="p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/30">
+                  <span className="text-[10px] text-indigo-300 block">AVERAGE QPS (DAU × Req / 86,400s)</span>
+                  <span className="text-lg font-bold text-white">{avgQps.toLocaleString()} RPS</span>
+                </div>
+                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30">
+                  <span className="text-[10px] text-amber-300 block">PEAK LOAD (2.5x Surge)</span>
+                  <span className="text-lg font-bold text-amber-300">{peakQps.toLocaleString()} RPS</span>
+                </div>
+                <div className="p-3 rounded-xl bg-cyan-500/10 border border-cyan-500/30">
+                  <span className="text-[10px] text-cyan-300 block">INGRESS BANDWIDTH</span>
+                  <span className="text-base font-bold text-cyan-300">{bandwidthMbps.toLocaleString()} Mbps</span>
+                </div>
+                <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
+                  <span className="text-[10px] text-emerald-300 block">1-YEAR WRITE STORAGE</span>
+                  <span className="text-base font-bold text-emerald-300">{storageTbPerYear} TB / yr</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <SiegeReportModal
         report={siegeReport}
         mission={mission}

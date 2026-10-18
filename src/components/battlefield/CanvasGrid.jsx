@@ -1,18 +1,24 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { ConnectionLines } from './ConnectionLines';
 import { TurretNode } from './TurretNode';
-import { Globe, Cable } from 'lucide-react';
+import { Radio, Cable, MousePointerClick } from 'lucide-react';
 
 export function CanvasGrid({
   nodes,
   connections,
   selectedNodeId,
   onSelectNode,
+  onDoubleClickNode,
   metrics,
+  trafficProfile,
   isSiegeRunning,
   onMoveNode,
   onAddConnection,
-  onRemoveConnection
+  onRemoveConnection,
+  onUpgradeTier,
+  onDowngradeTier,
+  onUpdateCount,
+  onDeleteNode
 }) {
   const containerRef = useRef(null);
   const draggingNodeRef = useRef(null);
@@ -20,7 +26,6 @@ export function CanvasGrid({
   const activeWireRef = useRef(null);
   const onMoveNodeRef = useRef(onMoveNode);
 
-  // State for manual drag-to-connect wire
   const [activeWire, setActiveWire] = useState(null);
 
   useEffect(() => {
@@ -66,16 +71,14 @@ export function CanvasGrid({
       if (!containerRef.current) return;
       const rect = containerRef.current.getBoundingClientRect();
 
-      // 1. Smooth 1:1 Node Dragging
       if (draggingNodeRef.current && onMoveNodeRef.current) {
         let newX = e.clientX - rect.left - dragOffsetRef.current.x;
         let newY = e.clientY - rect.top - dragOffsetRef.current.y;
-        newX = Math.max(16, Math.min(rect.width - 190, newX));
-        newY = Math.max(16, Math.min(rect.height - 110, newY));
+        newX = Math.max(16, Math.min(rect.width - 205, newX));
+        newY = Math.max(16, Math.min(rect.height - 125, newY));
         onMoveNodeRef.current(draggingNodeRef.current, Math.round(newX), Math.round(newY));
       }
 
-      // 2. Live Wire Drawing
       if (activeWireRef.current) {
         const updated = {
           ...activeWireRef.current,
@@ -109,49 +112,72 @@ export function CanvasGrid({
       onClick={() => onSelectNode(null)}
       className="relative flex-1 bg-grid-minimal overflow-hidden select-none"
     >
-      {/* Top-Left Telemetry & Wiring Hint */}
-      <div className="absolute top-3 left-4 z-10 flex items-center gap-4 pointer-events-none">
-        <div className="flex items-center gap-2">
-          <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
-          <span className="text-[11px] font-mono text-zinc-400 uppercase tracking-wider">
-            ARCHITECTURE TOPOLOGY
-          </span>
+      {/* Top-Left Tactical Controls Hint */}
+      <div className="absolute top-3 left-4 right-4 z-10 flex items-center justify-between pointer-events-none">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#12161f]/95 border border-[#262d3d] text-[10px] font-mono text-neutral-300">
+            <MousePointerClick className="w-3 h-3 text-amber-400" />
+            <span>Click: Select & Quick-Edit • <strong className="text-amber-300">Double-Click: Open Inspector</strong> • Del: Remove</span>
+          </div>
+          <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#12161f]/95 border border-[#262d3d] text-[10px] font-mono text-neutral-400">
+            <Cable className="w-3 h-3 text-emerald-400" />
+            <span>Drag Right Port → Left Port to wire • Click wire to cut</span>
+          </div>
         </div>
-        <div className="hidden md:flex items-center gap-1.5 px-2 py-0.5 rounded bg-zinc-900/90 border border-zinc-800 text-[10px] text-zinc-400">
-          <Cable className="w-3 h-3 text-indigo-400" />
-          <span>Drag from any node's Right Dot to another node's Left Dot to wire • Click a wire to remove</span>
+
+        {/* Traffic Particle Key */}
+        <div className="hidden xl:flex items-center gap-3 px-3 py-1 rounded bg-[#12161f]/95 border border-[#262d3d] text-[10px] font-mono text-neutral-300">
+          <span className="flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-indigo-400" /> App Traffic
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-amber-400" /> Cache Hit
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-purple-400" /> Async Queue
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-rose-500" /> DDoS Attack
+          </span>
         </div>
       </div>
 
-      {/* Client Traffic Ingress Node */}
-      <div className="absolute left-5 top-1/2 -translate-y-1/2 w-36 p-3 rounded-xl bg-[#121215] border border-zinc-800 shadow-lg z-10 flex flex-col gap-2">
+      {/* Left Traffic Spawn Gate */}
+      <div
+        style={{ left: '20px', top: '185px', width: '152px' }}
+        className="absolute p-3 rounded-lg bg-[#12161f] border-2 border-amber-500/50 shadow-xl z-10 flex flex-col gap-2"
+      >
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-zinc-800/80 border border-zinc-700/60 flex items-center justify-center">
-            <Globe className="w-3.5 h-3.5 text-indigo-400" />
+          <div className="w-8 h-8 rounded bg-amber-500/15 border border-amber-500/40 flex items-center justify-center">
+            <Radio className="w-4 h-4 text-amber-400 animate-pulse" />
           </div>
           <div>
-            <div className="text-[11px] font-semibold text-zinc-200 leading-none">Ingress</div>
-            <div className="text-[10px] text-zinc-500 mt-0.5">Client Traffic</div>
+            <div className="text-[11px] font-black text-white uppercase tracking-wider leading-none">
+              SPAWN GATE
+            </div>
+            <div className="text-[9px] font-mono text-amber-400 mt-0.5">Live Requests</div>
           </div>
         </div>
-        <div className="pt-2 border-t border-zinc-800/80 flex items-baseline justify-between">
-          <span className="text-[10px] text-zinc-500 font-mono">LOAD</span>
-          <span className="text-xs font-mono font-semibold text-zinc-100">
-            {metrics.netIncomingRps ? Math.round(metrics.netIncomingRps).toLocaleString() : 0} rps
+        <div className="pt-2 border-t border-[#222836] flex items-baseline justify-between">
+          <span className="text-[9px] text-neutral-400 font-mono">RATE</span>
+          <span className="text-xs font-mono font-bold text-emerald-400">
+            {metrics.netIncomingRps ? Math.round(metrics.netIncomingRps).toLocaleString() : 0} RPS
           </span>
         </div>
       </div>
 
-      {/* SVG Data Pipelines */}
+      {/* Animated SVG Data Pipelines */}
       <ConnectionLines
         nodes={nodes}
         connections={connections}
         isSiegeRunning={isSiegeRunning}
         activeWire={activeWire}
         onRemoveConnection={onRemoveConnection}
+        metrics={metrics}
+        trafficProfile={trafficProfile}
       />
 
-      {/* Architecture Nodes */}
+      {/* Architecture Turret Cards */}
       {nodes.map(node => (
         <TurretNode
           key={node.id}
@@ -161,11 +187,19 @@ export function CanvasGrid({
             e.stopPropagation();
             onSelectNode(node.id);
           }}
+          onDoubleClick={(e) => {
+            e.stopPropagation();
+            if (onDoubleClickNode) onDoubleClickNode(node.id);
+          }}
           status={metrics.nodeStatus ? metrics.nodeStatus[node.id] : null}
           onDragStart={(e) => handleNodeMouseDown(node, e)}
           onStartWire={handleStartWire}
           onCompleteWire={handleCompleteWire}
           isWiring={Boolean(activeWire)}
+          onUpgradeTier={onUpgradeTier}
+          onDowngradeTier={onDowngradeTier}
+          onUpdateCount={onUpdateCount}
+          onDeleteNode={onDeleteNode}
         />
       ))}
     </div>
